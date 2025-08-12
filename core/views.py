@@ -6,46 +6,76 @@ from django.utils import timezone
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib import messages
 
+
+def make_breadcrumb_context(category=None, title=None, is_published=True):
+    """
+    パンくずリスト用のコンテキストを生成する
+
+    Args:
+        category: カテゴリオブジェクト（Noneの場合は空のカテゴリリストを作成）
+        title: タイトル（任意）
+        is_published: 公開状態（デフォルトはTrue）
+
+    Returns:
+        dict: breadcrumb_context辞書
+    """
+    category_list = []
+
+    if category is not None:
+        i = 0
+        while i < 10 and category is not None:
+            i += 1
+            category_list.append(category)
+            category = category.upper
+        category_list.reverse()
+
+    breadcrumb_context = {
+        "category_list": category_list,
+        "is_published": is_published,
+    }
+
+    if title is not None:
+        breadcrumb_context["title"] = title
+
+    return breadcrumb_context
+
+
 class IndexView(generic.TemplateView):  # ホーム表示
-    template_name = 'core/index.html'
+    template_name = "core/index.html"
+
 
 class ArticleDetailView(generic.TemplateView):
-    template_name = 'core/article_detail.html'
+    template_name = "core/article_detail.html"
 
     def get(self, request, *args, **kwargs):
-        pk = self.kwargs.get('pk')
+        pk = self.kwargs.get("pk")
         obj = get_object_or_404(Article, pk=pk)
         if obj.is_published or obj.author == request.user:
             obj.view_count += 1
             obj.save()
             return super().get(request, *args, **kwargs)
         else:
-            messages.warning(request, 'アクセスしようとした記事は未公開ですので、ホームにリダイレクトされました。')
-            return redirect('core:index')
-    
+            messages.warning(
+                request,
+                "アクセスしようとした記事は未公開ですので、ホームにリダイレクトされました。",
+            )
+            return redirect("core:index")
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        pk = self.kwargs.get('pk')
+        pk = self.kwargs.get("pk")
         article = get_object_or_404(Article, pk=pk)
-        context['article'] = article
-        # 親が存在しない地点までさかのぼってカテゴリーのリストを作成する
-        category = article.category
-        category_list = []
-        i = 0
-        while i < 10 and category is not None:
-            i += 1
-            category_list.append(category)
-            category = category.upper
-        category_list.reverse()  # 上位カテゴリを後ろに加えていったので最後にreverse
-        context["breadcrumb_context"] = {
-            "category_list": category_list,
-            "title": article.title,
-            "is_published": article.is_published,
-        }
+        context["article"] = article
+        context["breadcrumb_context"] = make_breadcrumb_context(
+            category=article.category,
+            title=article.title,
+            is_published=article.is_published,
+        )
         return context
 
+
 class ArticleCreateView(generic.TemplateView):
-    template_name = 'core/article_create.html'
+    template_name = "core/article_create.html"
 
     def post(self, request):
         form = ArticleEditForm(request.POST, request.FILES)
@@ -57,176 +87,187 @@ class ArticleCreateView(generic.TemplateView):
             post.author = request.user
             post.compose_html()
             post.save()
-            messages.success(request, '記事を新しく作成しました。')
+            messages.success(request, "記事を新しく作成しました。")
             if not post.is_published:
-                messages.info(request, '記事は作成されましたが、まだ公開されていません。')
-            return redirect('core:index')
+                messages.info(
+                    request, "記事は作成されましたが、まだ公開されていません。"
+                )
+            return redirect("core:index")
         else:
-            messages.error(request, '記事を作成できませんでした。')
-            return render(request, self.template_name, {'form':form})
-    
+            messages.error(request, "記事を作成できませんでした。")
+            return render(request, self.template_name, {"form": form})
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = ArticleEditForm()
-        context["breadcrumb_context"] = {
-            "category_list": [],
-            "title": "記事新規作成",
-            "is_published": True
-        }
+        context["form"] = ArticleEditForm()
+        context["breadcrumb_context"] = make_breadcrumb_context(title="記事新規作成")
         return context
 
+
 class ArticleEditView(generic.TemplateView):
-    template_name = 'core/article_edit.html'
+    template_name = "core/article_edit.html"
 
     def post(self, request, pk):
-        article=Article.objects.get(pk=pk)
+        article = Article.objects.get(pk=pk)
         form = ArticleEditForm(request.POST, request.FILES, instance=article)
         if form.is_valid():
-            article.title = form.cleaned_data['title']
-            if form.cleaned_data['thumbnail']:
-                article.thumbnail = form.cleaned_data['thumbnail']
-            article.content = form.cleaned_data['content']
-            article.has_table_of_contents = form.cleaned_data['has_table_of_contents']
-            article.is_published = form.cleaned_data['is_published']
-            article.lead = form.cleaned_data['lead']
-            article.renew_date = local_now()  # 更新時には投稿日やビュー数、著者は更新しない
+            article.title = form.cleaned_data["title"]
+            if form.cleaned_data["thumbnail"]:
+                article.thumbnail = form.cleaned_data["thumbnail"]
+            article.content = form.cleaned_data["content"]
+            article.has_table_of_contents = form.cleaned_data["has_table_of_contents"]
+            article.is_published = form.cleaned_data["is_published"]
+            article.lead = form.cleaned_data["lead"]
+            article.renew_date = (
+                local_now()
+            )  # 更新時には投稿日やビュー数、著者は更新しない
             # 上記のアップデートされた内容に基づき、htmlを生成してセーブする
             article.compose_html()
             article.save()
-            messages.success(request, '記事を更新しました。')
+            messages.success(request, "記事を更新しました。")
             if not article.is_published:
-                messages.info(request, '記事は更新されましたが、まだ公開されていません。')
-            return redirect('core:detail', pk=article.pk)
+                messages.info(
+                    request, "記事は更新されましたが、まだ公開されていません。"
+                )
+            return redirect("core:detail", pk=article.pk)
         else:
-            messages.error(request, '記事を更新できませんでした。')
-            return render(request, self.template_name, {'form':form, 'article': article})
-    
+            messages.error(request, "記事を更新できませんでした。")
+            return render(
+                request, self.template_name, {"form": form, "article": article}
+            )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        article = get_object_or_404(Article, pk=self.kwargs.get('pk'))
-        context['article'] = article
-        context['form'] = ArticleEditForm(instance=article)
-        context["breadcrumb_context"] = {
-            "category_list": [],
-            "title": f"{article.title} の編集",
-            "is_published": article.is_published
-        }
+        article = get_object_or_404(Article, pk=self.kwargs.get("pk"))
+        context["article"] = article
+        context["form"] = ArticleEditForm(instance=article)
+        context["breadcrumb_context"] = make_breadcrumb_context(
+            title=f"{article.title} の編集", is_published=article.is_published
+        )
         return context
 
+
 class CategoryCreateView(generic.TemplateView):
-    template_name = 'core/category_edit.html'
+    template_name = "core/category_edit.html"
 
     def post(self, request):
         form = CategoryEditForm(request.POST)
         if form.is_valid():
             form.save()
-            messages.success(request, 'カテゴリを新しく作成しました。')
-            return redirect('core:index')
+            messages.success(request, "カテゴリを新しく作成しました。")
+            return redirect("core:index")
         else:
-            messages.error(request, 'カテゴリを作成できませんでした。')
-            return render(request, self.template_name, {'form':form, 'creating_new': True})
-    
+            messages.error(request, "カテゴリを作成できませんでした。")
+            return render(
+                request, self.template_name, {"form": form, "creating_new": True}
+            )
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = CategoryEditForm()
-        context['creating_new'] = True
-        context["breadcrumb_context"] = {
-            "category_list": [],
-            "title": "カテゴリ新規作成",
-            "is_published": True
-        }
+        context["form"] = CategoryEditForm()
+        context["creating_new"] = True
+        context["breadcrumb_context"] = make_breadcrumb_context(
+            title="カテゴリ新規作成"
+        )
         return context
+
 
 class CategoryDetailView(generic.TemplateView):
-    template_name = 'core/category_detail.html'
+    template_name = "core/category_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        inner_name = self.kwargs.get('inner_name')  # 内部カテゴリ名をurlのサブディレクトリとして用いる
+        inner_name = self.kwargs.get(
+            "inner_name"
+        )  # 内部カテゴリ名をurlのサブディレクトリとして用いる
         category = get_object_or_404(Category, inner_name=inner_name)
-        context['category'] = category
-        context['lower_categories'] = category.lowers.all()
-        context['articles'] = category.article_set.filter(is_published=True)
-        category_list = []
-        i = 0
-        while i < 10 and category is not None:
-            i += 1
-            category_list.append(category)
-            category = category.upper
-        category_list.reverse()  # 上位カテゴリを後ろに加えていったので最後にreverse
-        context['category_list'] = category_list
-        context["breadcrumb_context"] = {
-            "category_list": category_list,
-            "is_published": True
-        }
+        context["category"] = category
+        context["lower_categories"] = category.lowers.all()
+        context["articles"] = category.article_set.filter(is_published=True)
+        breadcrumb_context = make_breadcrumb_context(category=category)
+        context["category_list"] = breadcrumb_context["category_list"]
+        context["breadcrumb_context"] = breadcrumb_context
         return context
 
+
 class CategoryEditView(generic.TemplateView):
-    template_name = 'core/category_edit.html'
+    template_name = "core/category_edit.html"
 
     def post(self, request, inner_name):
         category = Category.objects.get(inner_name=inner_name)
         form = CategoryEditForm(request.POST, instance=category)
         if form.is_valid():
-            category.name = form.cleaned_data['name']
-            category.inner_name = form.cleaned_data['inner_name']
-            category.upper = form.cleaned_data['upper']
-            category.description = form.cleaned_data['description']
-            category.is_root = form.cleaned_data['is_root']
+            category.name = form.cleaned_data["name"]
+            category.inner_name = form.cleaned_data["inner_name"]
+            category.upper = form.cleaned_data["upper"]
+            category.description = form.cleaned_data["description"]
+            category.is_root = form.cleaned_data["is_root"]
             category.save()
-            messages.success(request, 'カテゴリを更新しました。')
-            return redirect('core:category-detail', inner_name=category.inner_name)
+            messages.success(request, "カテゴリを更新しました。")
+            return redirect("core:category-detail", inner_name=category.inner_name)
         else:
-            messages.error(request, 'カテゴリを更新できませんでした。')
-            return render(request, self.template_name, {'form':form, 'inner_name': inner_name, 'creating_new': False})
+            messages.error(request, "カテゴリを更新できませんでした。")
+            return render(
+                request,
+                self.template_name,
+                {"form": form, "inner_name": inner_name, "creating_new": False},
+            )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        category = get_object_or_404(Category, inner_name=self.kwargs.get('inner_name'))
-        context['inner_name'] = category.inner_name
-        context['form'] = CategoryEditForm(instance=category)
-        context['creating_new'] = False
+        category = get_object_or_404(Category, inner_name=self.kwargs.get("inner_name"))
+        context["inner_name"] = category.inner_name
+        context["form"] = CategoryEditForm(instance=category)
+        context["creating_new"] = False
         return context
+
 
 class UserEditView(LoginRequiredMixin, generic.TemplateView):
     """
     アイコン画像、表示名、ユーザー名の変更をするビュー
     パスワードの変更はallauthの専用のビューから行う
     """
-    template_name = 'core/user_edit.html'
+
+    template_name = "core/user_edit.html"
 
     def post(self, request):
         user = request.user
         form = UserEditForm(request.POST, request.FILES, instance=user)
         if form.is_valid():
-            if form.cleaned_data['icon']:
-                user.icon = form.cleaned_data['icon']
-            user.username = form.cleaned_data['username']
-            user.display_name = form.cleaned_data['display_name']
+            if form.cleaned_data["icon"]:
+                user.icon = form.cleaned_data["icon"]
+            user.username = form.cleaned_data["username"]
+            user.display_name = form.cleaned_data["display_name"]
             user.save()
-            messages.success(request, 'プロフィールを更新しました。')
-            return redirect('core:user-detail')
+            messages.success(request, "プロフィールを更新しました。")
+            return redirect("core:user-detail")
         else:
-            messages.error(request, 'プロフィールを更新できませんでした。')
-            return render(request, self.template_name, {'form': form})
-        
+            messages.error(request, "プロフィールを更新できませんでした。")
+            return render(request, self.template_name, {"form": form})
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['form'] = UserEditForm(instance=self.request.user)
+        context["form"] = UserEditForm(instance=self.request.user)
         return context
+
 
 class UserDetailView(LoginRequiredMixin, generic.TemplateView):
-    template_name = 'core/user_detail.html'
+    template_name = "core/user_detail.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['articles'] = Article.objects.filter(author=self.request.user).order_by('renew_date').reverse()
+        context["articles"] = (
+            Article.objects.filter(author=self.request.user)
+            .order_by("renew_date")
+            .reverse()
+        )
         return context
 
+
 class AuthorListView(generic.TemplateView):
-    template_name = 'core/author_list.html'
+    template_name = "core/author_list.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['authors'] = MyUser.objects.all()
+        context["authors"] = MyUser.objects.all()
         return context
