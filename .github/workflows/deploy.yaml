@@ -36,6 +36,7 @@ jobs:
 
             echo "==> Fetch latest code"
             git fetch --all --prune
+            git reset --hard origin/main
 
             echo "==> Activate venv & install deps"
             source "$VENV_DIR/bin/activate"
