@@ -3,16 +3,16 @@
         <i class="fa-solid fa-house"></i>
         HOME
     </a>
-    {% for category in category_list %}
+    {% for category in breadcrumb_context.category_list %}
     &gt;
     <a class="crumb-list-item" href="{% url 'core:category-detail' category.inner_name %}" rel="category">
         <i class="fa-regular fa-folder"></i>
         {{ category.name }}
     </a>
     {% endfor %}
-    {% if title %}
+    {% if breadcrumb_context.title %}
     &gt;
-    <a class="crumb-list-item" href="#">{{ title }}{% if not is_published %}<small><span
+    <a class="crumb-list-item" href="#">{{ breadcrumb_context.title }}{% if not breadcrumb_context.is_published %}<small><span
                 class="not-published-notification">*未公開</span></small>{% endif %}</a>
     {% endif %}
     <!-- htmlの改行でスペースがひとつ入ってしまうのでそれを見越して省略する -->

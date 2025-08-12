@@ -37,7 +37,11 @@ class ArticleDetailView(generic.TemplateView):
             category_list.append(category)
             category = category.upper
         category_list.reverse()  # 上位カテゴリを後ろに加えていったので最後にreverse
-        context['category_list'] = category_list
+        context["breadcrumb_context"] = {
+            "category_list": category_list,
+            "title": article.title,
+            "is_published": article.is_published,
+        }
         return context
 
 class ArticleCreateView(generic.TemplateView):
@@ -64,6 +68,11 @@ class ArticleCreateView(generic.TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = ArticleEditForm()
+        context["breadcrumb_context"] = {
+            "category_list": [],
+            "title": "記事新規作成",
+            "is_published": True
+        }
         return context
 
 class ArticleEditView(generic.TemplateView):
@@ -97,6 +106,11 @@ class ArticleEditView(generic.TemplateView):
         article = get_object_or_404(Article, pk=self.kwargs.get('pk'))
         context['article'] = article
         context['form'] = ArticleEditForm(instance=article)
+        context["breadcrumb_context"] = {
+            "category_list": [],
+            "title": f"{article.title} の編集",
+            "is_published": article.is_published
+        }
         return context
 
 class CategoryCreateView(generic.TemplateView):
@@ -116,6 +130,11 @@ class CategoryCreateView(generic.TemplateView):
         context = super().get_context_data(**kwargs)
         context['form'] = CategoryEditForm()
         context['creating_new'] = True
+        context["breadcrumb_context"] = {
+            "category_list": [],
+            "title": "カテゴリ新規作成",
+            "is_published": True
+        }
         return context
 
 class CategoryDetailView(generic.TemplateView):
@@ -136,6 +155,10 @@ class CategoryDetailView(generic.TemplateView):
             category = category.upper
         category_list.reverse()  # 上位カテゴリを後ろに加えていったので最後にreverse
         context['category_list'] = category_list
+        context["breadcrumb_context"] = {
+            "category_list": category_list,
+            "is_published": True
+        }
         return context
 
 class CategoryEditView(generic.TemplateView):

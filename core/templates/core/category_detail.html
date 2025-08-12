@@ -5,7 +5,7 @@
 <link rel="stylesheet" href="{% static 'core/css/category_detail.css' %}">
 {% endblock %}
 {% block column2-1 %}
-{% include 'core/breadcrumb_list.html' with category_list=category_list %}
+{% include 'core/breadcrumb_list.html' %}
 <h1>カテゴリ：{{ category.name }}</h1>
 <p class="category-description">
     {{ category.description }}
