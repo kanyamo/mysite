@@ -9,8 +9,7 @@
 <link rel="stylesheet" type="text/css" href="https://tikzjax.com/v1/fonts.css">
 {% endblock %}
 {% block column2-1 %}
-{% include 'core/breadcrumb_list.html' with category_list=category_list title=article.title
-is_published=article.is_published %}
+{% include 'core/breadcrumb_list.html' %}
 <article>
     <h1 class="title">{{article.title}}</h1>
     <div class="article-info">
