@@ -1,4 +1,4 @@
-name: Deploy (Django + Gunicorn + Nginx)
+name: Deploy
 
 on:
   push:
@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PROJECT_DIR: ~/mysite
-      VENV_DIR: ~/mysite/.venv
+      PROJECT_DIR: /home/{{ secrets.EC2_USER }}/mysite
+      VENV_DIR: /home/{{ secrets.EC2_USER }}/mysite/.venv
       DJANGO_SETTINGS_MODULE: mysite.settings.prod
       GUNICORN_SERVICE: mysite.service
 
